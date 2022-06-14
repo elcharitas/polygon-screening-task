@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.14;
 
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "./PeerToken.sol";
 
@@ -14,7 +15,7 @@ import "./PeerToken.sol";
  * The governor allows peers to exchange tokens at their own set prices.
  * ------------------------------------------------------------------------------------
  */
-contract PeerGovernor {
+contract PeerGovernor is ReentrancyGuard {
     using SafeMath for uint256;
 
     event NewPeer(address peer);
@@ -94,7 +95,7 @@ contract PeerGovernor {
     /**
      * @dev Removes a peer from the list of peers.
      */
-    function leave() external isPeer {
+    function leave() external isPeer nonReentrant {
         peers[msg.sender] = false;
         token.burnTokensOf(msg.sender);
         emit RemovePeer(msg.sender);
@@ -110,7 +111,7 @@ contract PeerGovernor {
     /**
      * @dev internal function to handle new peers
      */
-    function _addPeer(address _peer, uint _value) internal {
+    function _addPeer(address _peer, uint _value) internal nonReentrant {
         require(
             _peer != address(0),
             "You cannot add a peer with this address"
@@ -122,7 +123,7 @@ contract PeerGovernor {
         peers[_peer] = true;
 
         if(_value > 0) {
-            token.transfer(_peer, _value / 100 gwei);
+            token.transfer(_peer, _value.div(100 gwei));
         }
 
         peerCount += 1;
@@ -155,7 +156,7 @@ contract PeerGovernor {
             "Available token must be greater than 0"
         );
         require(
-            _prices[0] < _prices[1],
+            _prices[0] < _prices[1], // TODO: calculate this IRL
             "Price must be less than available token"
         );
 
@@ -185,6 +186,6 @@ contract PeerGovernor {
      * @dev internal function to calculate the fee to join the network
      */
     function _calcFee() internal view returns (uint256) {
-        return peerCount * 10 gwei; // entry fee increases as new peers join the network
+        return peerCount.mul(10 gwei); // entry fee increases as new peers join the network
     }
 }
