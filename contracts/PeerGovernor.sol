@@ -19,7 +19,17 @@ contract PeerGovernor {
 
     event NewPeer(address peer);
     event RemovePeer(address peer);
+    event NewOffer(address peer, uint256 offer);
 
+    struct Offer {
+        uint256 price;
+        address peer;
+        address baseToken;
+        address quoteToken;
+    }
+    Offer[] public offers;
+
+    // standard token for all peer transactions
     PeerToken public token;
     uint256 public peerCount;
     mapping(address => bool) public peers;
@@ -63,6 +73,18 @@ contract PeerGovernor {
         _addPeer(msg.sender, msg.value);
     }
 
+    function createOffer(
+        address _baseToken,
+        address _quoteToken,
+        uint256 _price
+    ) external payable isPeer {
+        require(
+            _price > 0,
+            "Price must be greater than 0"
+        );
+        _createOffer([_baseToken, _quoteToken], [_price, msg.value]);
+    }
+
     /**
      * @dev Removes a peer from the list of peers.
      */
@@ -100,6 +122,45 @@ contract PeerGovernor {
         peerCount += 1;
 
         emit NewPeer(_peer);
+    }
+
+    /**
+     * @dev internal function to handle new offers
+     */
+    function _createOffer(
+        address[] memory _tokens,
+        uint256[] memory _prices
+    ) internal {
+        require(
+            _tokens.length == 2,
+            "You must specify 2 tokens"
+        );
+        require(
+            _prices.length == 2,
+            "You must specify 2 prices"
+        );
+        require(
+            _prices[0] > 0,
+            "Price must be greater than 0"
+        );
+        require(
+            _prices[1] > 0,
+            "Available token must be greater than 0"
+        );
+        require(
+            _prices[0] < _prices[1],
+            "Price must be less than available token"
+        );
+
+        Offer memory offer = Offer({
+            price: _prices[0],
+            peer: msg.sender,
+            baseToken: _tokens[0],
+            quoteToken: _tokens[1]
+        });
+
+        offers.push(offer);
+        emit NewOffer(offer.peer, offer.price);
     }
 
     /**
