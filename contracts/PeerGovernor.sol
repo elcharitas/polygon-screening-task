@@ -138,7 +138,7 @@ contract PeerGovernor is ReentrancyGuard {
         address[2] memory _tokens,
         uint256[2] memory _prices
     ) internal {
-        // we don't need the next two check but let's do it anyways
+        // we don't need the next two checks but let's do it anyways
         require(
             _tokens.length == 2,
             "You must specify 2 tokens"
@@ -168,7 +168,7 @@ contract PeerGovernor is ReentrancyGuard {
         });
 
         offers.push(offer);
-        emit NewOffer(offer.peer, offer.price);
+        emit NewOffer(offer.peer, offers.length - 1);
     }
 
     /** 
