@@ -7,10 +7,11 @@ import "./PeerToken.sol";
 /**
  * @title PeerGovernor
  * @author elcharitas.dev - Jonathan Irhodia
- * @dev The PeerGovernor contract is used to manage the peers of the binance smartchain network.
+ * @dev The PeerGovernor contract is used to manage the peers of the rinkeby network.
  * ------------------------------------------------------------------------------------
  * This contract was created by Jonathan Irhodia and is licensed under the MIT License.
- * It is created to be submitted for Polygon Screening Task
+ * It is created to be submitted for Polygon Screening Task.
+ * The governor allows peers to exchange tokens at their own set prices.
  * ------------------------------------------------------------------------------------
  */
 contract PeerGovernor {
