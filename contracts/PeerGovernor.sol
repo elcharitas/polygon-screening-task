@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.14;
 
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "./IPeerGovernor.sol";
 import "./PeerToken.sol";
 
 /**
@@ -15,43 +15,12 @@ import "./PeerToken.sol";
  * The governor allows peers to exchange tokens at their own set prices.
  * ------------------------------------------------------------------------------------
  */
-contract PeerGovernor is ReentrancyGuard {
+contract PeerGovernor is IPeerGovernor {
     using SafeMath for uint256;
-
-    event NewPeer(address peer);
-    event RemovePeer(address peer);
-    event NewOffer(address peer, uint256 offer);
-
-    // offers indexed by id
-    struct Offer {
-        uint256 price;
-        address peer;
-        address baseToken;
-        address quoteToken;
-    }
-    Offer[] public offers;
-
-    // standard token for all peers
-    PeerToken public token;
-
-    // peers management
-    uint256 public peerCount;
-    mapping(address => bool) public peers;
-
+    
     constructor(){
         _setToken(address(new PeerToken()));
         _addPeer(msg.sender, 1000 gwei);
-    }
-
-    /**
-     * @dev only existing peers can add new peers to the network
-     */
-    modifier isPeer() {
-        require(
-            peers[msg.sender],
-            "You are not a peer yet"
-        );
-        _;
     }
 
     /**
@@ -93,6 +62,20 @@ contract PeerGovernor is ReentrancyGuard {
     }
 
     /**
+     * @dev allows peers to take a peer up on an offer
+     */
+    function takeOffer(uint256 _id) external payable isPeer {
+        _takeOffer(_id, msg.value);
+    }
+
+    /**
+     * @dev allows peers to accept a take from another peer
+     */
+    function acceptTake(uint256 _id) external isPeer {
+        _acceptTake(_id);
+    }
+
+    /**
      * @dev Removes a peer from the list of peers.
      */
     function leave() external isPeer nonReentrant {
@@ -106,86 +89,5 @@ contract PeerGovernor is ReentrancyGuard {
      */
     function getFee() external view returns (uint256) {
         return _calcFee();
-    }
-
-    /**
-     * @dev internal function to handle new peers
-     */
-    function _addPeer(address _peer, uint _value) internal nonReentrant {
-        require(
-            _peer != address(0),
-            "You cannot add a peer with this address"
-        );
-        require(
-            !peers[_peer],
-            "Peer already joined the network"
-        );
-        peers[_peer] = true;
-
-        if(_value > 0) {
-            token.transfer(_peer, _value.div(100 gwei));
-        }
-
-        peerCount += 1;
-
-        emit NewPeer(_peer);
-    }
-
-    /**
-     * @dev internal function to handle new offers
-     */
-    function _createOffer(
-        address[2] memory _tokens,
-        uint256[2] memory _prices
-    ) internal {
-        // we don't need the next two checks but let's do it anyways
-        require(
-            _tokens.length == 2,
-            "You must specify 2 tokens"
-        );
-        require(
-            _prices.length == 2,
-            "You must specify 2 prices"
-        );
-        require(
-            _prices[0] > 0,
-            "Price must be greater than 0"
-        );
-        require(
-            _prices[1] > 0,
-            "Available token must be greater than 0"
-        );
-        require(
-            _prices[0] < _prices[1], // TODO: calculate this IRL
-            "Price must be less than available token"
-        );
-
-        Offer memory offer = Offer({
-            price: _prices[0],
-            peer: msg.sender,
-            baseToken: _tokens[0],
-            quoteToken: _tokens[1]
-        });
-
-        offers.push(offer);
-        emit NewOffer(offer.peer, offers.length - 1);
-    }
-
-    /** 
-     * @dev internal function to set the peer token
-     */
-    function _setToken(address _token) internal {
-        require(
-            _token != address(0),
-            "You must specify a token"
-        );
-        token = PeerToken(_token);
-    }
-
-    /**
-     * @dev internal function to calculate the fee to join the network
-     */
-    function _calcFee() internal view returns (uint256) {
-        return peerCount.mul(10 gwei); // entry fee increases as new peers join the network
     }
 }
