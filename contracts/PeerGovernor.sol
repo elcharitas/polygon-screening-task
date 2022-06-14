@@ -21,6 +21,7 @@ contract PeerGovernor {
     event RemovePeer(address peer);
     event NewOffer(address peer, uint256 offer);
 
+    // offers indexed by id
     struct Offer {
         uint256 price;
         address peer;
@@ -29,13 +30,15 @@ contract PeerGovernor {
     }
     Offer[] public offers;
 
-    // standard token for all peer transactions
+    // standard token for all peers
     PeerToken public token;
+
+    // peers management
     uint256 public peerCount;
     mapping(address => bool) public peers;
 
     constructor(){
-        token = new PeerToken();
+        _setToken(address(new PeerToken()));
         _addPeer(msg.sender, 1000 gwei);
     }
 
@@ -73,6 +76,9 @@ contract PeerGovernor {
         _addPeer(msg.sender, msg.value);
     }
 
+    /**
+     * @dev allows peers to create a new offer
+     */
     function createOffer(
         address _baseToken,
         address _quoteToken,
@@ -128,9 +134,10 @@ contract PeerGovernor {
      * @dev internal function to handle new offers
      */
     function _createOffer(
-        address[] memory _tokens,
-        uint256[] memory _prices
+        address[2] memory _tokens,
+        uint256[2] memory _prices
     ) internal {
+        // we don't need the next two check but let's do it anyways
         require(
             _tokens.length == 2,
             "You must specify 2 tokens"
@@ -163,10 +170,21 @@ contract PeerGovernor {
         emit NewOffer(offer.peer, offer.price);
     }
 
+    /** 
+     * @dev internal function to set the peer token
+     */
+    function _setToken(address _token) internal {
+        require(
+            _token != address(0),
+            "You must specify a token"
+        );
+        token = PeerToken(_token);
+    }
+
     /**
      * @dev internal function to calculate the fee to join the network
      */
     function _calcFee() internal view returns (uint256) {
-        return peerCount * 10 gwei;
+        return peerCount * 10 gwei; // entry fee increases as new peers join the network
     }
 }
